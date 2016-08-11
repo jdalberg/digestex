@@ -43,35 +43,35 @@ defmodule Digestex do
       _ -> {url,[]}
     end
 
-    {:ok,{{_,r_code,_},fields,_}}=:httpc.request(method,request,[],[])
-    if ( r_code == 401 ) do
-      {realm, nonce, nc, cnonce, resp, opaque} = calcResponse(fields, user, password, uri.path, @methods[method], "0000000000000000")
+    case :httpc.request(method,request,[],[]) do
+      {:ok,{{_,401,_},fields,_}} ->
+        {realm, nonce, nc, cnonce, resp, opaque} = calcResponse(fields, user, password, uri.path, @methods[method], "0000000000000000")
 
-      p=%{
-        "Digest username" => q(user),
-        "realm" => q(realm),
-        "nonce" => q(nonce),
-        "uri" => q(uri.path),
-        "qop" => "auth",
-        "nc" => nc,
-        "cnonce" => q(cnonce),
-        "response" => q(resp)
-      }
-      p=if is_bitstring(opaque) do
-        Map.put(p,"opaque",q(opaque))
-      else
-        p
-      end
-      l=for {key,val} <- p, into: [], do: key <> "=" <> val
-      authHeader=[{'Authorization', String.to_char_list(Enum.join(l,","))}]
-      req=case method do
-        :post -> {url,authHeader,"application/x-www-form-urlencoded",data}
-        _ -> {url,authHeader}
-      end
-      :httpc.request(method,req,[],[])
-      #  :inets.stop()
-    else
-      {:error, "Response code #{r_code} returned when 401 was expected"}
+        p=%{
+          "Digest username" => q(user),
+          "realm" => q(realm),
+          "nonce" => q(nonce),
+          "uri" => q(uri.path),
+          "qop" => "auth",
+          "nc" => nc,
+          "cnonce" => q(cnonce),
+          "response" => q(resp)
+        }
+        p=if is_bitstring(opaque) do
+          Map.put(p,"opaque",q(opaque))
+        else
+          p
+        end
+        l=for {key,val} <- p, into: [], do: key <> "=" <> val
+        authHeader=[{'Authorization', String.to_char_list(Enum.join(l,","))}]
+        req=case method do
+          :post -> {url,authHeader,"application/x-www-form-urlencoded",data}
+          _ -> {url,authHeader}
+        end
+        :httpc.request(method,req,[],[])
+      {:ok,{{_,r_code,_},_fields,_}} ->
+        {:error, "Response code #{r_code} returned when 401 was expected"}
+      {:error,err} -> {:error, inspect err}
     end
   end
 
