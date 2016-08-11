@@ -22,7 +22,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
     end
     ```
 
-## Examples ## 
+## Examples
 
 You can see usage examples in the test files (located in the
 [`test/`](test)) directory.
