@@ -2,6 +2,15 @@
 
 An Elixir module that does Digest Auth on top of erlangs httpc
 
+## Synopsis
+
+```
+  {:ok, response} = Digestex.get("http://www.example.com/")
+
+  {:ok, response} = Digestex.get_auth("http://www.example.com/", "user", "pass")
+
+```
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
