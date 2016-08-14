@@ -2,16 +2,24 @@ defmodule Digestex do
 
   @methods [get: "GET", post: "POST"]
 
-  def get(url,user,password) do
+  def get(url, headers \\ []) do
+    :httpc.request(:get,{String.to_char_list(url),headers},[],[])
+  end
+
+  def get_auth(url,user,password) do
     do_auth(url,:get,user,password)
   end
 
-  def post(_url,:post,_user,_password) do
-    {:error, "Method :post needs some data"}
+  def post(url, data, headers \\ [], type \\ 'application/x-www-form-urlencoded') when is_list(headers) do
+    :httpc.request(:post,{String.to_char_list(url),headers,type,data},[],[])
   end
 
-  def post(url,user,password,data) do
+  def post_auth(url,user,password,data,headers \\ [], type \\ 'application/x-www-form-urlencoded') do
     do_auth(url,:post,user,password,data)
+  end
+
+  def post_auth(url,user,password) do
+    post_auth(url,:post,user,password,"")
   end
 
   defp do_auth(url,:get,user,password) do
