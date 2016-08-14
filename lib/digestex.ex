@@ -2,32 +2,16 @@ defmodule Digestex do
 
   @methods [get: "GET", post: "POST"]
 
-  def digest(url,user,password) do
+  def get(url,user,password) do
     do_auth(url,:get,user,password)
   end
 
-  def digest(url,:get,user,password) do
-    do_auth(url,:get,user,password,"")
-  end
-
-  def digest(_url,:post,_user,_password) do
+  def post(_url,:post,_user,_password) do
     {:error, "Method :post needs some data"}
   end
 
-  def digest(_url,_method,_user,_password) do
-    {:error, "Method not supported"}
-  end
-
-  def digest(url,:post,user,password,data) do
+  def post(url,user,password,data) do
     do_auth(url,:post,user,password,data)
-  end
-
-  def digest(url,:get,user,password,_data) do
-    do_auth(url,:get,user,password,"")
-  end
-
-  def digest(_url,_method, _user, _password, _data) do
-    {:error, "Method not supported"}
   end
 
   defp do_auth(url,:get,user,password) do
@@ -80,7 +64,7 @@ defmodule Digestex do
   end
 
   defp basic_auth_response( user, password ) do
-    {:error, "no basic yet"}
+    {:ok, String.to_char_list("Basic " <> Base.encode64("#{user}:#{password}"))}
   end
 
   defp digest_auth_response( auth_string, user, password, uri_path, method ) do
