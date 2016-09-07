@@ -6,8 +6,8 @@ defmodule Digestex do
     :httpc.request(:get,{String.to_char_list(url),headers},[],[])
   end
 
-  def get_auth(url,user,password) do
-    do_auth(url,:get,user,password)
+  def get_auth(url,user,password,headers \\ []) do
+    do_auth(url,:get,user,password,"",headers,'')
   end
 
   def post(url, data, headers \\ [], type \\ 'application/x-www-form-urlencoded') when is_list(headers) do
@@ -15,27 +15,19 @@ defmodule Digestex do
   end
 
   def post_auth(url,user,password,data,headers \\ [], type \\ 'application/x-www-form-urlencoded') do
-    do_auth(url,:post,user,password,data)
+    do_auth(url,:post,user,password,data,headers,type)
   end
 
-  def post_auth(url,user,password) do
-    post_auth(url,:post,user,password,"")
-  end
-
-  defp do_auth(url,:get,user,password) do
-    do_auth(url,:get,user,password,"")
-  end
-
-  defp do_auth(url,method,user,password,data) when is_binary(data) do
+  defp do_auth(url,method,user,password,data,headers,type) when is_binary(data) do
     url = to_char_list(url)
     uri = URI.parse(to_string(url))
 
     request = case method do
-      :post -> {url,[],'application/x-www-form-urlencoded',String.to_char_list(data)}
-      _ -> {url,[]}
+      :post -> {url,headers,type,String.to_char_list(data)}
+      _ -> {url,headers}
     end
 
-    response = :httpc.request(method,request,[],[])
+    response = :httpc.request(method,request,[],[],:default)
     case response do
       {:ok,{{_,401,_},fields,_}} ->
         # Digest?
@@ -54,14 +46,13 @@ defmodule Digestex do
                   {'set-cookie',cookieval} -> [{'Cookie',cookieval}]
                   _ -> []
                 end
-                authHeader = authHeader ++ cookie
+                authHeader = authHeader ++ cookie ++ headers
 
                 req=case method do
-                  # TODO: type shold be configurable
-                  :post -> {url,authHeader,'application/x-www-form-urlencoded',String.to_char_list(data)}
+                  :post -> {url,authHeader,type,String.to_char_list(data)}
                   _ -> {url,authHeader}
                 end
-                :httpc.request(method,req,[],[])
+                :httpc.request(method,req,[],[],:default)
               _ -> {:error, auth_response}
             end
           _ -> {:error, "401, but not WWW-Authenticate header found"}
@@ -71,6 +62,7 @@ defmodule Digestex do
     end
   end
 
+  ## PRIVATE PARTS!
   defp basic_auth_response( user, password ) do
     {:ok, String.to_char_list("Basic " <> Base.encode64("#{user}:#{password}"))}
   end
