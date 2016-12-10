@@ -4,6 +4,8 @@ An Elixir module that does Digest Auth on top of erlangs httpc
 
 ## Synopsis
 
+Make sure that the Digestex application is started.
+
 ```
   {:ok, response} = Digestex.get("http://www.example.com/")
 
