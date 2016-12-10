@@ -2,39 +2,96 @@ defmodule Digestex do
 
   @methods [get: "GET", post: "POST"]
 
+  use Prometheus.Metric
+  use GenServer
+
+  def start_link(profile_name \\ :dx_profile) do
+    GenServer.start_link(__MODULE__, profile_name , name: :dx_server)
+  end
+
+  ## API
+  @doc """
+
+  Ordinary get request.
+
+  """
   def get(url, headers \\ []) do
-    :httpc.request(:get,{String.to_char_list(url),headers},[],[])
+    GenServer.call(:dx_server, {:get, [ensure_charlist(url), headers]})
   end
 
-  def get_auth(url,user,password,headers \\ []) do
-    do_auth(url,:get,user,password,"",headers,'')
+  @doc """
+
+  GET request with digest auth
+
+  """
+  def get_auth(url, user, password, headers \\ []) do
+    GenServer.call(:dx_server, {:get_auth, [ensure_charlist(url), user, password, headers]})
   end
 
+  @doc """
+
+  do a no-auth POST
+
+  """
   def post(url, data, headers \\ [], type \\ 'application/x-www-form-urlencoded') when is_list(headers) do
-    :httpc.request(:post,{String.to_char_list(url),headers,type,data},[],[])
+    GenServer.call(:dx_server, {:post,[ensure_charlist(url),headers,type,ensure_charlist(data)]})
   end
 
-  def post_auth(url,user,password,data,headers \\ [], type \\ 'application/x-www-form-urlencoded') do
-    do_auth(url,:post,user,password,data,headers,type)
+  @doc """
+
+  a digest auth POST
+
+  """
+  def post_auth(url, user, password, data, headers \\ [], type \\ 'application/x-www-form-urlencoded') do
+    GenServer.call(:dx_server, {:post_auth,[ensure_charlist(url),user,password,ensure_charlist(data),headers,type]})
   end
 
-  defp do_auth(url,method,user,password,data,headers,type) when is_binary(data) do
-    url = to_char_list(url)
+  ## Server
+
+  def init(profile_name) do
+    :inets.start(:httpc, [{:profile, profile_name}])
+    :httpc.set_options([{:ipfamily, :inet6fb4}], profile_name)
+    {:ok, %{profile: :dx_profile}}
+  end
+
+  @doc """
+
+  Ordinary get request, no auth.
+
+  """
+  def handle_call({:get, [url, headers]}, _from, state) do
+    {:reply, :httpc.request(:get,{url,headers},[],[],state.profile), state}
+  end
+
+
+  def handle_call({:get_auth, [url,user,password,headers]}, _from, state) do
+    {:reply, do_auth(url,:get,user,password,"",headers,'',state.profile), state}
+  end
+
+  def handle_call({:post, [url, data, headers, type]}, _from, state) do
+    {:reply, :httpc.request(:post,{url,headers,type,data},[],[],state.profile), state}
+  end
+
+  def handle_call({:post_auth, [url, user, password, data, headers, type]}, _from, state) do
+    {:reply, do_auth(url,:post,user,password,data,headers,type,state.profile), state}
+  end
+
+  defp do_auth(url,method,user,password,data,headers,type,profile) do
     uri = URI.parse(to_string(url))
 
     request = case method do
-      :post -> {url,headers,type,String.to_char_list(data)}
+      :post -> {url,headers,type,data}
       _ -> {url,headers}
     end
 
-    response = :httpc.request(method,request,[],[],:default)
+    response = :httpc.request(method,request,[],[],profile)
     case response do
       {:ok,{{_,401,_},fields,_}} ->
         # Digest?
         case List.keyfind(fields,'www-authenticate',0) do
           {'www-authenticate', www_authenticate} ->
             {aRes, auth_response} = case String.split(to_string(www_authenticate)," ") do
-              ["Digest" | auth_string] -> digest_auth_response( www_authenticate, user, password, uri.path, @methods[method] )
+              ["Digest" | _auth_string] -> digest_auth_response( www_authenticate, user, password, uri.path, @methods[method] )
               ["Basic" | _auth_string] -> basic_auth_response( user, password )
               _ -> {:error, "Unknown WWW-Authenticate header: #{www_authenticate}"}
             end
@@ -49,10 +106,10 @@ defmodule Digestex do
                 authHeader = authHeader ++ cookie ++ headers
 
                 req=case method do
-                  :post -> {url,authHeader,type,String.to_char_list(data)}
+                  :post -> {url,authHeader,type,data}
                   _ -> {url,authHeader}
                 end
-                :httpc.request(method,req,[],[],:default)
+                :httpc.request(method,req,[],[],:dx_profile)
               _ -> {:error, auth_response}
             end
           _ -> {:error, "401, but not WWW-Authenticate header found"}
@@ -64,7 +121,7 @@ defmodule Digestex do
 
   ## PRIVATE PARTS!
   defp basic_auth_response( user, password ) do
-    {:ok, String.to_char_list("Basic " <> Base.encode64("#{user}:#{password}"))}
+    {:ok, String.to_charlist("Basic " <> Base.encode64("#{user}:#{password}"))}
   end
 
   defp digest_auth_response( auth_string, user, password, uri_path, method ) do
@@ -85,7 +142,7 @@ defmodule Digestex do
        p
      end
      l=for {key,val} <- p, into: [], do: key <> "=" <> val
-     {:ok,String.to_char_list("Digest " <> Enum.join(l,", "))}
+     {:ok,String.to_charlist("Digest " <> Enum.join(l,", "))}
   end
 
   def calcResponse(digestline, user, password, uri, method, cnonce \\ nil) do
@@ -130,4 +187,10 @@ defmodule Digestex do
     "\"" <> a <> "\""
   end
 
+  defp ensure_charlist(s) when is_binary(s) do
+    String.to_charlist(s)
+  end
+  defp ensure_charlist(c) do
+    c
+  end
 end
