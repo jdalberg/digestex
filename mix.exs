@@ -3,7 +3,7 @@ defmodule Digestex.Mixfile do
 
   def project do
     [app: :digestex,
-     version: "0.1.2",
+     version: "0.2.0",
      elixir: "~> 1.3",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
@@ -15,6 +15,8 @@ defmodule Digestex.Mixfile do
   end
 
   defp deps do
-    []
+    [
+      {:prometheus_ex, "~> 1.1.0"}
+    ]
   end
 end
