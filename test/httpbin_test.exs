@@ -2,6 +2,11 @@ defmodule DigestexHttpBinTest do
   use ExUnit.Case
   doctest Digestex
 
+  setup do
+    {:ok, digestex} = Digestex.start_link
+    {:ok, digestex: digestex}
+  end
+
   test "get digest, httpbin.org" do
     {res, response} = Digestex.get_auth("http://httpbin.org/digest-auth/auth/user1/pass1", "user1", "pass1")
     assert res == :ok

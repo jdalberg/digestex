@@ -2,6 +2,11 @@ defmodule DigestexTest do
   use ExUnit.Case
   doctest Digestex
 
+  setup do
+    {:ok, digestex} = Digestex.start_link
+    {:ok, digestex: digestex}
+  end
+
   test "get digest" do
     {res, {{_, r_code, _}, _, _}} = Digestex.get_auth('http://test.webdav.org/auth-digest', "user1", "user1")
     assert res == :ok
