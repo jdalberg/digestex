@@ -2,11 +2,6 @@ defmodule DigestexMufasaTest do
   use ExUnit.Case
   doctest Digestex
 
-  setup do
-    {:ok, digestex} = Digestex.start_link
-    {:ok, digestex: digestex}
-  end
-
   test "mufasa" do
     www_authenticate = 'Digest realm="testrealm@host.com", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", qop="auth,auth-int", opaque="5ccc069c403ebaf9f0171e9517f40e41"'
 

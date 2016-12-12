@@ -11,7 +11,9 @@ defmodule Digestex.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :inets]]
+   [applications: [:logger, :inets],
+    mod: {Digestex.App, []}
+   ]
   end
 
   defp deps do
