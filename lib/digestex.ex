@@ -51,7 +51,7 @@ defmodule Digestex do
   def init(profile_name) do
     :inets.start(:httpc, [{:profile, profile_name}])
     :httpc.set_options([{:ipfamily, :inet6fb4}], profile_name)
-    {:ok, %{profile: :dx_profile}}
+    {:ok, %{profile: :default}} # should be profile_name here, but inet6fb4 doesnt really work
   end
 
   @doc """
@@ -109,7 +109,7 @@ defmodule Digestex do
                   :post -> {url,authHeader,type,data}
                   _ -> {url,authHeader}
                 end
-                :httpc.request(method,req,[],[],:dx_profile)
+                :httpc.request(method,req,[],[],profile)
               _ -> {:error, auth_response}
             end
           _ -> {:error, "401, but not WWW-Authenticate header found"}
