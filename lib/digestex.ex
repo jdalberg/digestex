@@ -27,7 +27,7 @@ defmodule Digestex do
 
   """
   def get_auth(url, user, password, headers \\ []) do
-    GenServer.call(:dx_server, {:get_auth, [ensure_charlist(url), user, password, headers]})
+    GenServer.call(:dx_server, {:get_auth, [ensure_charlist(url), user, password, headers]}, @genserver_timeout)
   end
 
   @doc """
@@ -36,7 +36,7 @@ defmodule Digestex do
 
   """
   def post(url, data, headers \\ [], type \\ 'application/x-www-form-urlencoded') when is_list(headers) do
-    GenServer.call(:dx_server, {:post,[ensure_charlist(url),headers,type,ensure_charlist(data)]})
+    GenServer.call(:dx_server, {:post,[ensure_charlist(url),headers,type,ensure_charlist(data)]}, @genserver_timeout)
   end
 
   @doc """
@@ -45,7 +45,7 @@ defmodule Digestex do
 
   """
   def post_auth(url, user, password, data, headers \\ [], type \\ 'application/x-www-form-urlencoded') do
-    GenServer.call(:dx_server, {:post_auth,[ensure_charlist(url),user,password,ensure_charlist(data),headers,type]})
+    GenServer.call(:dx_server, {:post_auth,[ensure_charlist(url),user,password,ensure_charlist(data),headers,type]}, @genserver_timeout)
   end
 
   @doc """
