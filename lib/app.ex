@@ -7,11 +7,12 @@ defmodule Digestex.App do
     children = [
       worker(Digestex, [:dx_profile])
     ]
+
     case Supervisor.start_link(children, strategy: :one_for_one) do
       {:ok, sup} ->
-        {:ok, sup, []}
+         {:ok, sup, []}
       {:error, _} = error ->
-        error
+         error
     end
   end
 end

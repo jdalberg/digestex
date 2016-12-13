@@ -1,6 +1,8 @@
 defmodule Digestex do
 
   @methods [get: "GET", post: "POST"]
+  @genserver_timeout 10000
+  @httpc_timeout 8000
 
   use Prometheus.Metric
   use GenServer
@@ -16,7 +18,7 @@ defmodule Digestex do
 
   """
   def get(url, headers \\ []) do
-    GenServer.call(:dx_server, {:get, [ensure_charlist(url), headers]})
+    GenServer.call(:dx_server, {:get, [ensure_charlist(url), headers]}, @genserver_timeout)
   end
 
   @doc """
@@ -46,12 +48,23 @@ defmodule Digestex do
     GenServer.call(:dx_server, {:post_auth,[ensure_charlist(url),user,password,ensure_charlist(data),headers,type]})
   end
 
+  @doc """
+
+  an incomming async response, should not be called from the outside
+
+  """
+  def async_response(reply_info) do
+    GenServer.cast(:dx_server, {:async_response, [reply_info]})
+  end
+
   ## Server
 
   def init(profile_name) do
     :inets.start(:httpc, [{:profile, profile_name}])
     :httpc.set_options([{:ipfamily, :inet6fb4}], profile_name)
-    {:ok, %{profile: :default}} # should be profile_name here, but inet6fb4 doesnt really work
+    Process.flag(:trap_exit, true)
+    # outstanding_requests is a map with req_id, client_pid
+    {:ok, %{profile: profile_name, outstanding_requests: %{}}}
   end
 
   @doc """
@@ -59,21 +72,83 @@ defmodule Digestex do
   Ordinary get request, no auth.
 
   """
-  def handle_call({:get, [url, headers]}, _from, state) do
-    {:reply, :httpc.request(:get,{url,headers},[],[],state.profile), state}
+  def handle_call({:get, [url, headers]}, from, state) do
+    case :httpc.request(:get,{url,headers},http_options,default_options,state.profile) do
+      {:ok, req_id} ->
+        {:noreply, %{state | outstanding_requests: Map.merge(state.outstanding_requests, %{ req_id => from })}, @genserver_timeout}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
 
-  def handle_call({:get_auth, [url,user,password,headers]}, _from, state) do
-    {:reply, do_auth(url,:get,user,password,"",headers,'',state.profile), state}
+  def handle_call({:get_auth, [url,user,password,headers]}, from, state) do
+    case do_auth(url,:get,user,password,"",headers,'',state.profile) do
+      {:ok, req_id} ->
+        {:noreply, %{state | outstanding_requests: Map.merge(state.outstanding_requests, %{ req_id => from })}, @genserver_timeout}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
-  def handle_call({:post, [url, data, headers, type]}, _from, state) do
-    {:reply, :httpc.request(:post,{url,headers,type,data},[],[],state.profile), state}
+  def handle_call({:post, [url, data, headers, type]}, from, state) do
+    case :httpc.request(:post,{url,headers,type,data},http_options,default_options,state.profile) do
+      {:ok, req_id} ->
+        {:noreply, %{state | outstanding_requests: Map.merge(state.outstanding_requests, %{ req_id => from })}, @genserver_timeout}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
-  def handle_call({:post_auth, [url, user, password, data, headers, type]}, _from, state) do
-    {:reply, do_auth(url,:post,user,password,data,headers,type,state.profile), state}
+  def handle_call({:post_auth, [url, user, password, data, headers, type]}, from, state) do
+    case do_auth(url,:post,user,password,data,headers,type,state.profile) do
+      {:ok, req_id} ->
+        {:noreply, %{state | outstanding_requests: Map.merge(state.outstanding_requests, %{ req_id => from })}, @genserver_timeout}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_cast({:async_response, [reply_info]}, state) do
+    case reply_info do
+      {req_id, {:error, :timeout}} ->
+        # There is no reason to cancel the request in httpc, because this timeout
+        # is the normal one generated after @httpc_timeout ms, we should just clear
+        # from state, and reply with the timeout.
+        GenServer.reply(state.outstanding_requests[req_id], {:error, :timeout})
+        {:noreply, %{state | outstanding_requests: Map.drop(state.outstanding_requests,[req_id])}}
+      {req_id, result} ->
+        cond do
+          Map.has_key?(state.outstanding_requests,req_id) ->
+            GenServer.reply(state.outstanding_requests[req_id], {:ok, result})
+            {:noreply, %{state | outstanding_requests: Map.drop(state.outstanding_requests,[req_id])}}
+          true ->
+            {:noreply, state}
+        end
+      weirdness ->
+        # Should never happen.
+        cancel_all(state.outstanding_requests)
+        {:noreply, %{state | outstanding_requests: []}} # panic and remove all
+    end
+  end
+
+  def handle_info({:EXIT, pid, reason}, state) do
+    # find the pid in the outstanding map, and remove the req_id and cancel it
+    cancel_all(state.outstanding_requests)
+    {:noreply, %{ state | outstanding_requests: %{}}}
+  end
+
+  # an outstanding request encountered the GenServer timeout, this shoudn't really be possible
+  # because the timeout from httpc should have allready handled the request.
+  # .. but in cases where httpc dies or some similar disaster, then perhaps...
+  # .. since it IS a disaster scenario, we can just clear the state.
+  def handle_info(:timeout, state) do
+    cancel_all(state.outstanding_requests)
+    {:noreply, %{ state | outstanding_requests: %{}}}
+  end
+
+  def handle_info(_msg, state) do
+    {:noreply, state}
   end
 
   defp do_auth(url,method,user,password,data,headers,type,profile) do
@@ -84,6 +159,7 @@ defmodule Digestex do
       _ -> {url,headers}
     end
 
+    # do a sync request first, because we expect the 401 header.
     response = :httpc.request(method,request,[],[],profile)
     case response do
       {:ok,{{_,401,_},fields,_}} ->
@@ -109,13 +185,14 @@ defmodule Digestex do
                   :post -> {url,authHeader,type,data}
                   _ -> {url,authHeader}
                 end
-                :httpc.request(method,req,[],[],profile)
+                # this is the actual request then, so this shoud be async like a normal get
+                :httpc.request(method,req,http_options,default_options,profile)
               _ -> {:error, auth_response}
             end
           _ -> {:error, "401, but not WWW-Authenticate header found"}
         end
-      {:ok,_} -> response
-      {:error,err} -> {:error, inspect err}
+      {:ok,_} -> {:response, response}
+      {:error,err} -> {:error,err}
     end
   end
 
@@ -192,5 +269,26 @@ defmodule Digestex do
   end
   defp ensure_charlist(c) do
     c
+  end
+
+  def http_options do
+    [
+      {:timeout, @httpc_timeout},
+      {:relaxed, true}
+    ]
+  end
+
+  def default_options do
+    [
+      {:sync, false}, # make requests async
+      {:receiver, &async_response/1}
+    ]
+  end
+
+  defp cancel_all(outstanding_requests) do
+    for req_id <- Map.keys(outstanding_requests) do
+      :httpc.cancel_request(req_id)
+      GenServer.reply(outstanding_requests[req_id],{:error, :cancelled})
+    end
   end
 end
