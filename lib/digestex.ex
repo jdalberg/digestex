@@ -5,7 +5,7 @@ defmodule Digestex do
 
   def start(_type, _args) do
     {:ok, pid} = :inets.start(:httpc, [{:profile, :dx_profile}])
-    :httpc.set_option(:ipfamiliy, :inet6fb4, :dx_profile)
+    :httpc.set_option(:ipfamily, :inet6fb4, :dx_profile)
     {:ok, pid}
   end
 
