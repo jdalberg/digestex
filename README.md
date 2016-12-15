@@ -4,8 +4,6 @@ An Elixir module that does Digest Auth on top of erlangs httpc
 
 ## Synopsis
 
-Make sure that the Digestex application is started.
-
 ```
   {:ok, response} = Digestex.get("http://www.example.com/")
 
@@ -21,7 +19,7 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 
     ```elixir
     def deps do
-      [{:digestex, "~> 0.2.0"}]
+      [{:digestex, "~> 0.0.1"}]
     end
     ```
 
