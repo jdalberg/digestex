@@ -7,6 +7,8 @@ defmodule Digestex.Mixfile do
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
+     description: description(),
+     package: package(),
      deps: deps()]
   end
 
@@ -17,5 +19,20 @@ defmodule Digestex.Mixfile do
 
   defp deps do
     []
+  end
+
+  defp description do
+    """
+    An elixir module for doing HTTP digest authentication using erlang httpc
+    """
+  end
+
+  defp package do
+    [
+      files: ["lib", "mix.exs", "README*", "CHANGELOG*"],
+      maintainers: ["Jesper Dalberg"],
+      licenses: ["Artistic"],
+      links: %{"GitHub" => "https://github.com/jdalberg/digestex"}
+    ]
   end
 end

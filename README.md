@@ -1,4 +1,6 @@
 # Digestex
+[![Build Status](https://travis-ci.org/jdalberg/digestex.svg?branch=master)](https://travis-ci.org/jdalberg/digestex)
+[![Hex.pm Version](http://img.shields.io/hexpm/v/digestex.svg?style=flat)](https://hex.pm/packages/digestex)
 
 An Elixir module that does Digest Auth on top of erlangs httpc
 
@@ -15,19 +17,9 @@ An Elixir module that does Digest Auth on top of erlangs httpc
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
 
-  1. Add `digestex` to your list of dependencies in `mix.exs`:
-
     ```elixir
     def deps do
-      [{:digestex, "~> 0.0.1"}]
-    end
-    ```
-
-  2. Ensure `digestex` is started before your application:
-
-    ```elixir
-    def application do
-      [applications: [:digestex]]
+      [{:digestex, "~> 0.4.2"}]
     end
     ```
 
