@@ -14,7 +14,7 @@ defmodule Digestex do
   end
 
   def get(url, headers \\ []) do
-    :httpc.request(:get,{'#{url}',headers},http_options,[], get_profile)
+    :httpc.request(:get,{'#{url}',headers},http_options(),[], get_profile())
   end
 
   def get_auth(url,user,password,headers \\ []) do
@@ -22,7 +22,7 @@ defmodule Digestex do
   end
 
   def post(url, data, headers \\ [], type \\ 'application/x-www-form-urlencoded') when is_list(headers) do
-    :httpc.request(:post,{'#{url}',headers,type,data},http_options,[], get_profile)
+    :httpc.request(:post,{'#{url}',headers,type,data},http_options(),[], get_profile())
   end
 
   def post_auth(url,user,password,data,headers \\ [], type \\ 'application/x-www-form-urlencoded') do
@@ -37,7 +37,7 @@ defmodule Digestex do
       _ -> {url,headers}
     end
 
-    response = :httpc.request(method,request,http_options,[], get_profile)
+    response = :httpc.request(method,request,http_options(),[], get_profile())
     case response do
       {:ok,{{_,401,_},fields,_}} ->
         # Digest?
@@ -62,7 +62,7 @@ defmodule Digestex do
                   :post -> {url,authHeader,type,String.to_char_list(data)}
                   _ -> {url,authHeader}
                 end
-                :httpc.request(method,req,http_options,[], get_profile)
+                :httpc.request(method,req,http_options(),[], get_profile())
               _ -> {:error, auth_response}
             end
           _ -> {:error, "401, but not WWW-Authenticate header found"}
