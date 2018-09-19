@@ -59,7 +59,7 @@ defmodule Digestex do
                 authHeader = authHeader ++ cookie ++ headers
 
                 req=case method do
-                  :post -> {url,authHeader,type,String.to_char_list(data)}
+                  :post -> {url,authHeader,type,String.to_charlist(data)}
                   _ -> {url,authHeader}
                 end
                 :httpc.request(method,req,http_options(),[], get_profile())
@@ -74,7 +74,7 @@ defmodule Digestex do
 
   ## PRIVATE PARTS!
   defp basic_auth_response( user, password ) do
-    {:ok, String.to_char_list("Basic " <> Base.encode64("#{user}:#{password}"))}
+    {:ok, String.to_charlist("Basic " <> Base.encode64("#{user}:#{password}"))}
   end
 
   defp digest_auth_response( auth_string, user, password, uri_path, method ) do
@@ -95,7 +95,7 @@ defmodule Digestex do
        p
      end
      l=for {key,val} <- p, into: [], do: key <> "=" <> val
-     {:ok,String.to_char_list("Digest " <> Enum.join(l,", "))}
+     {:ok,String.to_charlist("Digest " <> Enum.join(l,", "))}
   end
 
   def calcResponse(digestline, user, password, uri, method, cnonce \\ nil) do
