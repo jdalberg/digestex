@@ -4,7 +4,7 @@ defmodule Digestex.Mixfile do
   def project do
     [app: :digestex,
      version: "0.4.3",
-     elixir: "~> 1.4",
+     elixir: "~> 1.7",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      description: description(),
@@ -13,7 +13,7 @@ defmodule Digestex.Mixfile do
   end
 
   def application do
-    [applications: [:inets],
+    [applications: [:inets, :logger],
      mod: {Digestex, []} ]
   end
 
