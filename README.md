@@ -23,6 +23,8 @@ If [available in Hex](https://hex.pm/docs/publish), the package can be installed
     end
     ```
 
+And then :digestex should be added to you list of applications in mix.exs
+
 ## Examples
 
 You can see usage examples in the test files (located in the
