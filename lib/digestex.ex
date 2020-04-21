@@ -128,6 +128,7 @@ defmodule Digestex do
     end
   end
 
+  @keys ~w(username realm nonce uri opaque qop response nc cnonce)
   defp digest_auth_response( auth_string, user, password, uri_path, method, nc ) do
     ncstr="#{nc}" |> String.pad_leading(8,"0")
 
@@ -147,7 +148,7 @@ defmodule Digestex do
      else
        p
      end
-     l=for {key,val} <- p, into: [], do: key <> "=" <> val
+     l=@keys |> Enum.filter(& p[&1]) |> Enum.map(& (&1 <> "=" <> p[&1]))
      {:ok,String.to_charlist("Digest " <> Enum.join(l,", "))}
   end
 
