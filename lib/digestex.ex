@@ -155,7 +155,7 @@ defmodule Digestex do
   def calcResponse(digestline, user, password, uri, method, cnonce \\ nil, ncstr) do
     dp=digest_fields(digestline)
     
-    qoplist=String.split(dp["qop"],",")
+    qoplist=String.split(Map.get(dp, "qop", ""), ",")
     dp = cond do
       Map.has_key?(dp, "opaque") ->
         dp
@@ -178,7 +178,7 @@ defmodule Digestex do
     response = if ( Enum.member?(qoplist,"auth") or Enum.member?(qoplist,"auth-int") ) do
       ha1 <> ":" <> dp["nonce"] <> ":" <> ncstr <> ":" <> cnonce <> ":" <> "auth" <>  ":" <> ha2
     else
-      ha1 <> ":" <> dp["nonce"] <> ha2
+      ha1 <> ":" <> dp["nonce"] <> ":" <> ha2
     end
     {dp["realm"],dp["nonce"],cnonce,md5(response),dp["opaque"]}
   end
