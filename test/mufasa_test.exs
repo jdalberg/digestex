@@ -15,4 +15,15 @@ defmodule DigestexMufasaTest do
     assert nonce == "dcd98b7102dd2f0e8b11d0f600bfb0c093"
   end
 
+  test "response without qop" do
+    www_authenticate = 'Digest realm="testrealm@host.com", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41"'
+
+    {realm, nonce, cnonce, resp, opaque} = Digestex.calcResponse(www_authenticate, "Mufasa", "Circle Of Life", "/dir/index.html", "GET", "0a4f113b", "00000001")
+    assert resp == "670fd8c2df070c60b045671b8b24ff02"
+    assert opaque == "5ccc069c403ebaf9f0171e9517f40e41"
+    assert realm == "testrealm@host.com"
+    assert cnonce == "0a4f113b"
+    assert nonce == "dcd98b7102dd2f0e8b11d0f600bfb0c093"
+  end
+
 end
